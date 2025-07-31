@@ -84,6 +84,14 @@
       font-weight: bold;
       min-height: 20px;
     }
+
+    .success {
+      color: #4CAF50;
+    }
+
+    .error {
+      color: #F44336;
+    }
   </style>
 </head>
 <body>
@@ -107,41 +115,115 @@
       <div id="mensagem-status"></div>
     </form>
   </div>
-<script>
-  const form = document.getElementById("meuFormulario");
-  const status = document.getElementById("mensagem-status");
-  const button = document.getElementById("submitButton");
 
-  form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  status.innerText = "Enviando...";
-  button.disabled = true;
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById("meuFormulario");
+      const status = document.getElementById("mensagem-status");
+      const button = document.getElementById("submitButton");
 
-  const formData = new FormData(form);
-  const plainData = Object.fromEntries(formData.entries());
+      // Função para formatar CPF
+      function formatarCPF(cpf) {
+        return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+      }
 
-  try {
-    const response = await fetch("https://script.google.com/macros/s/AKfycbywo-WiGhX9cUuyUlV1xv8icrgDyjr8hZmPwnb2y5-ME2nbHc8gR8zis6Lx7DP93Dy6zw/exec", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(plainData)
+      // Função para validar CPF
+      function validarCPF(cpf) {
+        cpf = cpf.replace(/\D/g, '');
+        return cpf.length === 11;
+      }
+
+      // Função para validar telefone
+      function validarTelefone(telefone) {
+        telefone = telefone.replace(/\D/g, '');
+        return telefone.length >= 10 && telefone.length <= 11;
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        status.innerHTML = '<span class="info">Enviando...</span>';
+        button.disabled = true;
+
+        const formData = new FormData(form);
+        const plainData = Object.fromEntries(formData.entries());
+
+        // Validações client-side
+        if (!validarCPF(plainData.cpf)) {
+          status.innerHTML = '<span class="error">CPF inválido (deve ter 11 dígitos)</span>';
+          button.disabled = false;
+          return;
+        }
+
+        if (!validarTelefone(plainData.telefone)) {
+          status.innerHTML = '<span class="error">Telefone inválido (DDD + número)</span>';
+          button.disabled = false;
+          return;
+        }
+
+        try {
+          // URL do seu Google Apps Script
+          const scriptUrl = 'https://script.google.com/macros/s/AKfycbywo-WiGhX9cUuyUlV1xv8icrgDyjr8hZmPwnb2y5-ME2nbHc8gR8zis6Lx7DP93Dy6zw/exec';
+          
+          // Usando CORS Anywhere como proxy (para desenvolvimento)
+          const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+          
+          const response = await fetch(proxyUrl + scriptUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Requested-With": "XMLHttpRequest"
+            },
+            body: JSON.stringify(plainData)
+          });
+
+          const result = await response.json();
+          
+          if (result.status === "success") {
+            status.innerHTML = `<span class="success">${result.message || 'Dados enviados com sucesso!'}</span>`;
+            form.reset();
+          } else {
+            status.innerHTML = `<span class="error">${result.message || 'Erro ao processar sua solicitação'}</span>`;
+          }
+        } catch (err) {
+          console.error("Erro:", err);
+          status.innerHTML = '<span class="error">Erro na conexão. Tente novamente mais tarde.</span>';
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      // Máscara para CPF
+      document.querySelector('input[name="cpf"]').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 11) value = value.substring(0, 11);
+        
+        // Formatação automática
+        if (value.length > 9) {
+          value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        } else if (value.length > 6) {
+          value = value.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+        } else if (value.length > 3) {
+          value = value.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+        }
+        
+        e.target.value = value;
+      });
+
+      // Máscara para telefone
+      document.querySelector('input[name="telefone"]').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 11) value = value.substring(0, 11);
+        
+        // Formatação automática
+        if (value.length > 6) {
+          value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        } else if (value.length > 2) {
+          value = value.replace(/(\d{2})(\d{1,4})/, '($1) $2');
+        }
+        
+        e.target.value = value;
+      });
     });
-
-    const result = await response.json();
-    
-    if (result.status === "success") {
-      status.innerHTML = `<span style="color: #4CAF50">${result.message}</span>`;
-      form.reset();
-    } else {
-      status.innerHTML = `<span style="color: #F44336">${result.message}</span>`;
-    }
-  } catch (err) {
-    console.error("Erro:", err);
-    status.innerHTML = `<span style="color: #F44336">Erro de conexão. Tente novamente mais tarde.</span>`;
-  } finally {
-    button.disabled = false;
-  }
-});
-</script>
+  </script>
 </body>
 </html>
