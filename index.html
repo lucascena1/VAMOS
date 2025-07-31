@@ -66,16 +66,23 @@
       border-radius: 8px;
       cursor: pointer;
       font-size: 16px;
+      transition: background-color 0.3s;
     }
 
     button:hover {
       background-color: #f0f0f0;
     }
 
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
     #mensagem-status {
       text-align: center;
       margin-top: 16px;
       font-weight: bold;
+      min-height: 20px;
     }
   </style>
 </head>
@@ -96,38 +103,43 @@
         <label><input type="radio" name="clt" value="Sim" required /> Sim</label>
         <label><input type="radio" name="clt" value="Não" required /> Não</label>
       </div>
-      <button type="submit">Enviar</button>
+      <button type="submit" id="submitButton">Enviar</button>
       <div id="mensagem-status"></div>
     </form>
   </div>
 <script>
   const form = document.getElementById("meuFormulario");
   const status = document.getElementById("mensagem-status");
+  const button = document.getElementById("submitButton");
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     status.innerText = "Enviando...";
+    button.disabled = true;
 
     const formData = new FormData(form);
     const plainData = Object.fromEntries(formData.entries());
 
     try {
-      const response = await fetch("https://script.google.com/macros/s/AKfycbywo-WiGhX9cUuyUlV1xv8icrgDyjr8hZmPwnb2y5-ME2nbHc8gR8zis6Lx7DP93Dy6zw/exec", {
+      const response = await fetch("SUA_URL_DO_APPS_SCRIPT_AQUI", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(plainData),
+        body: JSON.stringify(plainData)
       });
 
-      if (response.ok) {
+      const result = await response.json();
+      
+      if (result.success) {
         status.innerText = "✅ Enviado com sucesso!";
         form.reset();
       } else {
-        const errorMsg = await response.text();
-        status.innerText = `❌ Erro: ${errorMsg}`;
+        status.innerText = `❌ Erro: ${result.error || 'Erro ao processar'}`;
       }
     } catch (err) {
-      console.error(err);
-      status.innerText = "❌ Erro ao enviar. Tente novamente.";
+      console.error("Erro:", err);
+      status.innerText = "❌ Erro na conexão. Tente novamente.";
+    } finally {
+      button.disabled = false;
     }
   });
 </script>
